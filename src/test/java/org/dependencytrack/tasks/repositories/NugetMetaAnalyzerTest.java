@@ -435,6 +435,38 @@ class NugetMetaAnalyzerTest {
             Assertions.assertNull(metaModel.getPublishedTimestamp());
         }
 
+
+        @Test
+        void testAnalyzerWithPreReleaseOnlyVersionsReturnsNullLatestVersion() throws Exception {
+
+            // Test for log warning covered in 5075 - ensure no errors are thrown / logged
+            // when no release versions exist
+
+            setupMockServerClient(
+                    "/v3/index.json",
+                    "/unit/tasks/repositories/https---nuget.org.v3-index.json",
+                    null
+            );
+
+            setupMockServerClient(
+                    "/v3/registration5-gz-semver2/opentelemetry.instrumentation.sqlclient/index.json",
+                    "/unit/tasks/repositories/https---nuget.org.registration-semver2.beta-releases-only.index-inline-pages.json",
+                    null
+            );
+
+            var betaOnlyComponent = new Component();
+            betaOnlyComponent.setInternal(false);
+            betaOnlyComponent.setName("OpenTelemetry.Instrumentation.SqlClient");
+            betaOnlyComponent.setPurl(new PackageURL("pkg:nuget/OpenTelemetry.Instrumentation.SqlClient@1.12.0-beta.2"));
+
+            MetaModel metaModel = analyzer.analyze(betaOnlyComponent);
+
+            Assertions.assertTrue(analyzer.isApplicable(betaOnlyComponent));
+            Assertions.assertEquals(RepositoryType.NUGET, analyzer.supportedRepositoryType());
+            Assertions.assertNull(metaModel.getLatestVersion());
+            Assertions.assertNull(metaModel.getPublishedTimestamp());
+        }
+
     }
 
 
