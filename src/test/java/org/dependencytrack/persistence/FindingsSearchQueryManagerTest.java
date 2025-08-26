@@ -5,7 +5,13 @@ import alpine.persistence.PaginatedResult;
 import alpine.persistence.Pagination;
 import alpine.resources.AlpineRequest;
 import org.dependencytrack.PersistenceCapableTest;
-import org.dependencytrack.model.*;
+import org.dependencytrack.model.AnalysisResponse;
+import org.dependencytrack.model.AnalysisState;
+import org.dependencytrack.model.Component;
+import org.dependencytrack.model.GroupedFinding;
+import org.dependencytrack.model.Project;
+import org.dependencytrack.model.Severity;
+import org.dependencytrack.model.Vulnerability;
 import org.dependencytrack.tasks.scanners.AnalyzerIdentity;
 import org.hamcrest.Matcher;
 import org.junit.jupiter.api.Nested;
@@ -16,7 +22,11 @@ import java.util.Collections;
 import java.util.Date;
 
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasEntry;
+import static org.hamcrest.Matchers.hasProperty;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -214,8 +224,8 @@ class FindingsSearchQueryManagerTest extends PersistenceCapableTest {
 
             assertThat(findings, contains(
                     hasVulnerabilityWith("INT-2025-00002", 10L), // Crit
-                    hasVulnerabilityWith("INT-2025-00004", 10L), // Med
                     hasVulnerabilityWith("INT-2025-00003", 10L), // Med
+                    hasVulnerabilityWith("INT-2025-00004", 10L), // Med
                     hasVulnerabilityWith("INT-2025-00001", 10L)  // Unassigned
             ));
         }

@@ -205,27 +205,19 @@ public class FindingsSearchQueryManager extends QueryManager implements IQueryMa
         var queryBuilder = new StringBuilder(GroupedFinding.QUERY);
         queryBuilder.append(queryFilter);
 
+        final var orderByFragments = new ArrayList<String>();
         if (this.orderBy != null) {
-            queryBuilder
-                    .append(" ORDER BY ")
-                    .append(sortingAttributes.get(this.orderBy))
-                    .append(' ')
-                    .append(this.orderDirection == OrderDirection.DESCENDING ? "DESC" : "ASC");
-
-            // Add secondary sort if not already sorting by vulnId
-            if (!"vulnerability.vulnId".equals(this.orderBy)) {
-                queryBuilder
-                        .append(", ")
-                        .append(sortingAttributes.get("vulnerability.vulnId"))
-                        .append(' ')
-                        .append(this.orderDirection == OrderDirection.DESCENDING ? "DESC" : "ASC");
-            }
+            orderByFragments.add("%s %s".formatted(
+                    sortingAttributes.get(this.orderBy),
+                    (this.orderDirection == OrderDirection.DESCENDING ? "DESC" : "ASC")));
         }
+        if (!"vulnerability.vulnId".equals(this.orderBy)) {
+            orderByFragments.add(sortingAttributes.get("vulnerability.vulnId")); // Tie-breaker to ensure stable ordering.
+        }
+        final var orderByClause = " ORDER BY " + String.join(", ", orderByFragments);
 
-        queryBuilder.append(' ');
-        queryBuilder.append(getOffsetLimitSqlClause());
+        final Query<Object[]> query = pm.newQuery(Query.SQL, GroupedFinding.QUERY + queryFilter + orderByClause + ' ' + getOffsetLimitSqlClause());
 
-        final Query<Object[]> query = pm.newQuery(Query.SQL, queryBuilder.toString());
 
         PaginatedResult result = new PaginatedResult();
         query.setNamedParameters(params);
