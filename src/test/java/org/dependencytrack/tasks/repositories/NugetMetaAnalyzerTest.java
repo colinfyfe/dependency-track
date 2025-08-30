@@ -49,7 +49,6 @@ class NugetMetaAnalyzerTest {
     public static final String LOCALHOST_REPO_INDEX = "http://localhost:1080/artifactory/api/nuget/v3/nuget-repo/index.json";
     private static ClientAndServer mockServer;
 
-
     @BeforeAll
     static void beforeClass() throws Exception {
         mockServer = ClientAndServer.startClientAndServer(1080);
@@ -61,7 +60,6 @@ class NugetMetaAnalyzerTest {
         );
     }
 
-
     private static void setupMockServerClient(
             String path,
             String responseFile,
@@ -69,7 +67,6 @@ class NugetMetaAnalyzerTest {
     ) throws Exception {
         setupMockServerClient(path, responseFile, encodedBasicHeader, "application/json", 200);
     }
-
 
     private static void setupMockServerClient(
             String path,
@@ -99,12 +96,10 @@ class NugetMetaAnalyzerTest {
                 );
     }
 
-
     @AfterAll
     static void afterClass() {
         mockServer.stop();
     }
-
 
     /**
      * Various tests to confirm error handling behaviour when, e.g. the repo or package cannot
@@ -133,7 +128,6 @@ class NugetMetaAnalyzerTest {
             }
         }
 
-
         @Test
         void testBaseUrlNotFoundBehaviourWhenCallingAnalyze() throws Exception {
 
@@ -160,7 +154,6 @@ class NugetMetaAnalyzerTest {
             }
         }
 
-
         @Test
         void testRepoValidButPackageNotFoundBehaviour() throws Exception {
 
@@ -181,7 +174,6 @@ class NugetMetaAnalyzerTest {
 
             assertMetaModelExistsButEmpty(analyzer, metaModel);
         }
-
 
         @Test
         void testErrorBetweenPageRequestsReturnsNullData() throws Exception {
@@ -242,13 +234,11 @@ class NugetMetaAnalyzerTest {
 
     }
 
-
     private void assertMetaModelExistsButEmpty(NugetMetaAnalyzer analyzer, MetaModel metaModel) {
         Assertions.assertEquals(RepositoryType.NUGET, analyzer.supportedRepositoryType());
         Assertions.assertNull(metaModel.getLatestVersion());
         Assertions.assertNull(metaModel.getPublishedTimestamp());
     }
-
 
     /**
      * Tests against JSON files captured from nuget.org to avoid making live calls and to control test data state. Main
@@ -262,7 +252,6 @@ class NugetMetaAnalyzerTest {
         private Component component;
         private NugetMetaAnalyzer analyzer;
 
-
         @BeforeEach
         void setUp() throws Exception {
             this.component = new Component();
@@ -273,7 +262,6 @@ class NugetMetaAnalyzerTest {
             this.analyzer = new NugetMetaAnalyzer();
             this.analyzer.setRepositoryBaseUrl("https://api.nuget.org");
         }
-
 
         @Test
         void testAnalyzerWithMultipleInlinePages() throws Exception {
@@ -311,7 +299,6 @@ class NugetMetaAnalyzerTest {
 
     }
 
-
     /**
      * Artifactory doesn't provide published dates and favours (only uses?) paged registration data.
      * This collection uses the service index to find the best RegistrationsBaseUrl, in this case
@@ -322,7 +309,6 @@ class NugetMetaAnalyzerTest {
 
         NugetMetaAnalyzer analyzer;
         Component component;
-
 
         @BeforeEach
         void setUp() throws Exception {
@@ -350,7 +336,6 @@ class NugetMetaAnalyzerTest {
 
         }
 
-
         @Test
         void testAnalyzerWithMultipageRegistrationInfo() throws Exception {
 
@@ -373,7 +358,6 @@ class NugetMetaAnalyzerTest {
             Assertions.assertNull(metaModel.getPublishedTimestamp());
         }
 
-
         @Test
         void testAnalyzerWithMultipageRegistrationInfoIgnorePreReleaseAndUnlisted() throws Exception {
 
@@ -388,7 +372,6 @@ class NugetMetaAnalyzerTest {
             Assertions.assertEquals("5.1.2", metaModel.getLatestVersion());
             Assertions.assertNull(metaModel.getPublishedTimestamp());
         }
-
 
         @Test
         void testAnalyzerWithMultipageRegistrationInfoWhenPage2AllUnlisted() throws Exception {
@@ -412,7 +395,6 @@ class NugetMetaAnalyzerTest {
             Assertions.assertNull(metaModel.getPublishedTimestamp());
         }
 
-
         @Test
         void testAnalyzerWithMultipageRegistrationInfoWhenPage2AllPreRelease() throws Exception {
 
@@ -435,9 +417,8 @@ class NugetMetaAnalyzerTest {
             Assertions.assertNull(metaModel.getPublishedTimestamp());
         }
 
-
         @Test
-        void testAnalyzerWithPreReleaseOnlyVersionsReturnsNullLatestVersion() throws Exception {
+        void testAnalyzerWithPreReleaseOnlyVersionsReturnsLatestPreReleaseVersion() throws Exception {
 
             // Test for log warning covered in 5075 - ensure no errors are thrown / logged
             // when no release versions exist
@@ -449,7 +430,7 @@ class NugetMetaAnalyzerTest {
             );
 
             setupMockServerClient(
-                    "/v3/registration5-gz-semver2/opentelemetry.instrumentation.sqlclient/index.json",
+                    "/artifactory/api/nuget/v3/nuget-repo/registration-semver2/opentelemetry.instrumentation.sqlclient/index.json",
                     "/unit/tasks/repositories/https---nuget.org.registration-semver2.beta-releases-only.index-inline-pages.json",
                     null
             );
@@ -463,12 +444,13 @@ class NugetMetaAnalyzerTest {
 
             Assertions.assertTrue(analyzer.isApplicable(betaOnlyComponent));
             Assertions.assertEquals(RepositoryType.NUGET, analyzer.supportedRepositoryType());
-            Assertions.assertNull(metaModel.getLatestVersion());
-            Assertions.assertNull(metaModel.getPublishedTimestamp());
+            Assertions.assertNotNull(metaModel.getLatestVersion());
+            Assertions.assertEquals("1.12.0-beta.2", metaModel.getLatestVersion());
+            Date expected = analyzer.parseUpdateTime("2025-07-15T04:42:33.33+00:00");
+            Assertions.assertEquals(expected, metaModel.getPublishedTimestamp());
         }
 
     }
-
 
     /**
      * Artifactory doesn't provide published dates and favours (only uses?) paged registration data.
@@ -481,7 +463,6 @@ class NugetMetaAnalyzerTest {
 
         NugetMetaAnalyzer analyzer;
         Component component;
-
 
         @BeforeEach
         void setUp() throws Exception {
@@ -515,7 +496,6 @@ class NugetMetaAnalyzerTest {
             );
         }
 
-
         @Test
         void testAnalyzerWithMultipageRegistrationInfo() throws Exception {
 
@@ -530,7 +510,6 @@ class NugetMetaAnalyzerTest {
             Assertions.assertEquals("6.0.2", metaModel.getLatestVersion());
             Assertions.assertNull(metaModel.getPublishedTimestamp());
         }
-
 
         @Test
         void testAnalyzerWithMultipageRegistrationInfoIgnorePreReleaseAndUnlisted() throws Exception {
@@ -547,7 +526,6 @@ class NugetMetaAnalyzerTest {
             Assertions.assertNull(metaModel.getPublishedTimestamp());
         }
 
-
         @Test
         void testAnalyzerWithMultipageRegistrationInfoWhenPage2AllUnlisted() throws Exception {
 
@@ -562,7 +540,6 @@ class NugetMetaAnalyzerTest {
             Assertions.assertEquals("1.1.2", metaModel.getLatestVersion());
             Assertions.assertNull(metaModel.getPublishedTimestamp());
         }
-
 
         @Test
         void testAnalyzerWithMultipageRegistrationInfoWhenPage2AllPreRelease() throws Exception {
@@ -580,7 +557,6 @@ class NugetMetaAnalyzerTest {
         }
 
     }
-
 
     @Nested
     class DateParserTests {
@@ -603,18 +579,15 @@ class NugetMetaAnalyzerTest {
             Assertions.assertNotNull(result);
         }
 
-
         @Test
         void shouldReturnNullForBlankString() {
             Assertions.assertNull(this.analyzer.parseUpdateTime("   "));
         }
 
-
         @Test
         void shouldReturnNullForInvalidDate() {
             Assertions.assertNull(this.analyzer.parseUpdateTime("not-a-date"));
         }
-
 
         @Test
         void shouldReturnNullForNullInput() {
@@ -622,6 +595,5 @@ class NugetMetaAnalyzerTest {
         }
 
     }
-
 
 }

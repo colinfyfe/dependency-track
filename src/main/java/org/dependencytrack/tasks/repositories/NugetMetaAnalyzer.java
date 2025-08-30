@@ -166,7 +166,6 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
         return meta;
     }
 
-
     /**
      * Attempts to find the latest version of the supplied component and return its published date, if one exists.
      * Ignores pre-release and unlisted versions.
@@ -193,7 +192,13 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
 
             final var root = new JSONObject(EntityUtils.toString(resp.getEntity()));
 
-            AbridgedNugetCatalogEntry abridgedNugetCatalogEntry = findLatestStableViaRegistrations(root);
+            // Search for a release version first...
+            AbridgedNugetCatalogEntry abridgedNugetCatalogEntry = findLatestViaRegistrations(root, false);
+
+            // ... then try again if none found, looking for the latest pre-release version
+            if (abridgedNugetCatalogEntry == null) {
+                abridgedNugetCatalogEntry = findLatestViaRegistrations(root, true);
+            }
 
             if (abridgedNugetCatalogEntry != null) {
                 meta.setLatestVersion(abridgedNugetCatalogEntry.getVersion());
@@ -207,7 +212,6 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
         }
     }
 
-
     /**
      * Parses the NuGet Registrations to find latest version information. Handles both inline items and paged items.
      * Sorts pages in descending order by the upper version number - if a listed, final version can be found in that
@@ -216,7 +220,7 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
      * @return Version metadata if a suitable version found, or null if not
      * @throws IOException if network error occurs
      */
-    private AbridgedNugetCatalogEntry findLatestStableViaRegistrations(JSONObject registrationData) throws IOException {
+    private AbridgedNugetCatalogEntry findLatestViaRegistrations(final JSONObject registrationData, final boolean includePreRelease) throws IOException {
 
         final JSONArray pages = registrationData == null ? null : registrationData.optJSONArray(NUGET_KEY_ITEMS);
 
@@ -243,7 +247,7 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
         for (final JSONObject page : pageUpperBounds) {
             try {
                 final JSONArray leaves = resolveLeaves(page);
-                final AbridgedNugetCatalogEntry bestOnPage = findHighestStableVersionFromLeaves(leaves);
+                final AbridgedNugetCatalogEntry bestOnPage = findHighestVersionFromLeaves(leaves, includePreRelease);
                 if (bestOnPage != null) {
                     return bestOnPage;
                 }
@@ -293,14 +297,14 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
         }
     }
 
-
     /**
-     * Scan the supplied leaves to extract the latest listed, released version. NuGet does not guarantee release order
+     * Scan the supplied leaves to extract the latest listed version. NuGet does not guarantee release order
      * so scan the entire array although, anecdotally, the collection does generally appear to be in ascending order
      * @param leaves Items to be scanned
+     * @param includePreRelease include pre-release versions in latest version lookup
      * @return {@link AbridgedNugetCatalogEntry containing the latest version found in the leaves collection
      */
-    private AbridgedNugetCatalogEntry findHighestStableVersionFromLeaves(JSONArray leaves) {
+    private AbridgedNugetCatalogEntry findHighestVersionFromLeaves(final JSONArray leaves, final boolean includePreRelease) {
 
         if (leaves == null || leaves.isEmpty()) {
             return null;
@@ -317,7 +321,7 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
                 entry = parseCatalogEntry(leaf.optJSONObject("catalogEntry"));
             }
 
-            if (entry == null || entry.getVersion() == null) {
+            if (entry == null || entry.getVersion() == null || (isPreRelease(entry.getVersion()) && !includePreRelease)) {
                 continue;
             }
 
@@ -330,7 +334,6 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
 
         return bestEntry;
     }
-
 
     /**
      * Parse a single catalog entry to extract the version and published information. Could be extended to include other
@@ -348,7 +351,7 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
         }
 
         var version = catalogEntry.optString("version", null);
-        if (version == null || version.isBlank() || isPreRelease(version)) {
+        if (version == null || version.isBlank()) {
             return null;
         }
 
@@ -405,7 +408,6 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
         LOGGER.debug("Could not find the RegistrationsBaseUrl at " + this.serviceIndexUrl);
         return null;
     }
-
 
     /**
      * Attempts to find the "best" RegistrationsBaseUrl from the NuGet service index preferring SemVer 2 with
@@ -482,7 +484,6 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
         }
     }
 
-
     /**
      * Internal class to collate useful version information form the larger NuGet catalog entry
      */
@@ -514,6 +515,5 @@ public class NugetMetaAnalyzer extends AbstractMetaAnalyzer {
                     '}';
         }
     }
-
 
 }
